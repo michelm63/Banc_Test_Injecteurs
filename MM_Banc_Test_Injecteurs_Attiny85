@@ -1,0 +1,60 @@
+// Banc de test injecteurs essence, utilisation d'un Attiny 85 ou d'un "Mini ATTINY85 Micro USB Development Programmer Board" à 1€
+// Attention programmer l'Attiny85 sur 8 Mhz (interne) pour respecter les temps du programme
+// Si l'interrupteur 1 est fermé (à la masse) : essai statique, les injecteurs sont ouverts pendant 1 minute
+// Si l'interrupteur 2 est fermé (à la masse) : essai dynamique, les injecteurs sont ouverts pendant un temps T = InjectON et fermé un temps T = InjectOFF
+// La durée totale injecteurs ouverts doit durer 1 minute pour avoir une bonne précision de mesure
+// Serial print pas utilisable avec l'Attiny85 
+
+char ver[] = "version Michel du 14_07_2018";
+
+unsigned long heure = 0;                  // Heure actuelle actuel
+unsigned long ancienHeure = 0;            // Heure avant
+const unsigned long Tempo = 60000;        // Temporisation 60 sec (60 000 milli-secondes)
+const unsigned long InjectON = 2475;      // Temps d'injecteur ouvert ON en us 2,5 ms = 2475 us + temps de fonctionnement
+const unsigned long InjectOFF = 2475;     // Temps d'injecteur fermé OFF en us 2,5 ms = 2475 us + temps de fonctionnement
+const unsigned long Impulsion = 24000;    // Nombre d'impulsions d'injecteur ouvert ON, 24 000 = 1 min injecteur ouvert
+unsigned long impulscompt = 0;            // Nombre d'impulsions d'injecteur à compter
+const int Inter1 = 2;                     // Entrée 2 (broche 7) interrupteur n°1 fonctionnement en continu : essai statique
+const int Inter2 = 3;                     // Entrée 3 (broche 2) interrupteur n°2 fonctionnement par impulsions : essai dynamique
+const int Injecteur = 4;                  // Sortie 4 (broche 3) commande injecteur
+
+void setup() {
+
+  pinMode(Inter1, INPUT_PULLUP);          // Entrée sur D2
+  pinMode(Inter2, INPUT_PULLUP);          // Entrée sur D4
+  pinMode(Injecteur, OUTPUT);             // Sortie sur D8
+  digitalWrite (Injecteur, 0);            // initialisation injecteurs non alimentés
+//  Serial.begin(115200);                   //
+//  Serial.println(__FILE__); Serial.println(__DATE__); Serial.println(__TIME__);
+//  Serial.println(ver);
+}
+
+void loop() {
+  boolean etatBouton1 = digitalRead (Inter1);
+  boolean etatBouton2 = digitalRead (Inter2);
+
+  if (etatBouton1 == 0 && etatBouton2 == 1) {  // Si l'inter 1 est fermé à la masse 0 V et l'inter 2 ouvert
+//    Serial.println("Inter_1");
+    digitalWrite (Injecteur, 1);               // on alimente les injecteurs
+    delay (Tempo);                             // Temporisation injecteur ouvert pour essai statique
+    digitalWrite (Injecteur, 0);               // On coupe l'alimentation des injecteurs
+  }
+  else {
+    digitalWrite (Injecteur, 0);
+  }
+
+  if (etatBouton1 == 1 && etatBouton2 == 0) {   // Si l'inter2 est fermé à la masse 0 V et l'inter 1 ouvert
+//    Serial.println("Inter_2");
+    for (impulscompt = 0 ; impulscompt < Impulsion ; impulscompt ++) // Boucle tant que le nombre d'impulsions injecteurs est inférieur au nombre prévu on continue
+    {
+//      Serial.println(impulscompt);
+      digitalWrite (Injecteur, 1);              // on alimente les injecteurs
+      delayMicroseconds(InjectON);              // Temps d'attente injecteur ON en us
+      digitalWrite (Injecteur, 0);              // On coupe l'alimentation des injecteurs OFF
+      delayMicroseconds(InjectOFF);             // Temps d'attente injecteur coupé OFF
+    }
+  }
+  else {
+    digitalWrite (Injecteur, 0);
+  }
+}
